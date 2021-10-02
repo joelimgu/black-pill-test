@@ -16,8 +16,6 @@ use stm32f1xx_hal::serial::{Config, Serial}; // When a panic occurs, stop the mi
 use nb::block;
 use cortex_m_semihosting::hprintln;
 
-extern crate drs_0x01;
-use drs_0x01::{Servo, Rotation};
 
 // This marks the entrypoint of our application. The cortex_m_rt creates some
 // startup code before this, but we don't need to worry about this
@@ -31,7 +29,6 @@ fn main() -> ! {
 
     // GPIO pins on the STM32F1 must be driven by the APB2 peripheral clock.
     // This must be enabled first. The HAL provides some abstractions for
-
     // us: First get a handle to the RCC peripheral:
     let mut rcc: Rcc = dp.RCC.constrain();
     // Now we have access to the RCC's registers. The GPIOC can be enabled in
@@ -46,8 +43,8 @@ fn main() -> ! {
     let mut gpioa = dp.GPIOA.split(&mut rcc.apb2);
     let mut afio = dp.AFIO.constrain(&mut rcc.apb2);
 
-    // let sys_clock = rcc.cfgr.sysclk(8.mhz()).freeze(&mut flash.acr);
-    let clocks_serial = rcc.cfgr.freeze(&mut flash.acr);
+    let sys_clock = rcc.cfgr.sysclk(8.mhz()).freeze(&mut flash.acr);
+    // let clocks_serial = rcc.cfgr.freeze(&mut flash.acr);
 
 
 
@@ -61,28 +58,21 @@ fn main() -> ! {
         dp.USART1,
         (pin_tx, pin_rx),
         &mut afio.mapr,
-        Config::default().baudrate(115200.bps()), // baud rate defined in herkulex doc
-        clocks_serial.clone(),
+        Config::default().baudrate(10.bps()),
+        sys_clock.clone(),
         &mut rcc.apb2,
     );
 
     // separate into tx and rx channels
-    let (mut tx, mut rx) = serial.split();
+    let (mut tx, _rx) = serial.split();
 
-    let mut delay = Delay::new(cp.SYST, clocks_serial);
+    let mut delay = Delay::new(cp.SYST, sys_clock);
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
-
-    let servo = Servo::new(0x00);
-    let message = servo.set_speed(512, Rotation::Clockwise);
 
     loop {
         led.set_low().ok();
-        // block!(tx.write(b'R')).ok();
-        for b in &message{
-            block!(tx.write(*b)).ok();
-        }
-        // let _r = block!(rx.read()).unwrap();
-        // delay.delay_ms(1_00_u16);
-        // hprintln!("{:?}", message).unwrap();
+        block!(tx.write(b'A')).ok();
+        delay.delay_ms(1_00_u16);
+        hprintln!("{:b}", b'A').unwrap();
     }
 }

@@ -13,6 +13,10 @@ cortex-m-rt = "^0.6.12"  # Startup code for the ARM Core
 embedded-hal = "^0.2.4"  # Access to generic embedded functions (`set_high`)
 panic-halt = "^0.2.0"    # Panic handler
 
+nb = "0.1"
+drs-0x01 = {git = "https://github.com/gbip/drs_0x01_driver"}
+
+
 [dependencies.stm32f1xx-hal]
 # Bluepill contains a 64kB flash variant which is called "medium density"
 features = ["stm32f103", "rt", "medium"]

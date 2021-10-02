@@ -4,20 +4,14 @@
 #![no_std]
 #![no_main]
 
+use async_cortex_m::task;
 use cortex_m_rt::entry; // The runtime
 use embedded_hal::digital::v2::OutputPin; // the `set_high/low`function
 use stm32f1xx_hal::{delay::Delay, pac, prelude::*}; // STM32F1 specific functions
 #[allow(unused_imports)]
 use panic_halt;
 use stm32f1xx_hal::rcc::Rcc;
-use stm32f1xx_hal::pac::Peripherals;
-use stm32f1xx_hal::serial::{Config, Serial}; // When a panic occurs, stop the microcontroller
-
-use nb::block;
-use cortex_m_semihosting::hprintln;
-
-extern crate drs_0x01;
-use drs_0x01::{Servo, Rotation};
+use stm32f1xx_hal::pac::Peripherals; // When a panic occurs, stop the microcontroller
 
 // This marks the entrypoint of our application. The cortex_m_rt creates some
 // startup code before this, but we don't need to worry about this
@@ -31,7 +25,6 @@ fn main() -> ! {
 
     // GPIO pins on the STM32F1 must be driven by the APB2 peripheral clock.
     // This must be enabled first. The HAL provides some abstractions for
-
     // us: First get a handle to the RCC peripheral:
     let mut rcc: Rcc = dp.RCC.constrain();
     // Now we have access to the RCC's registers. The GPIOC can be enabled in
@@ -41,48 +34,28 @@ fn main() -> ! {
     // This gives us an exclusive handle to the GPIOC peripheral. To get the
     // handle to a single pin, we need to configure the pin first. Pin C13
     // is usually connected to the Bluepills onboard LED.
-
-    let mut flash = dp.FLASH.constrain();
-    let mut gpioa = dp.GPIOA.split(&mut rcc.apb2);
-    let mut afio = dp.AFIO.constrain(&mut rcc.apb2);
-
-    // let sys_clock = rcc.cfgr.sysclk(8.mhz()).freeze(&mut flash.acr);
-    let clocks_serial = rcc.cfgr.freeze(&mut flash.acr);
-
-
-
-    // USART1 on Pins A9 and A10
-    let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
-    let pin_rx = gpioa.pa10;
-
-
-
-    let serial = Serial::usart1(
-        dp.USART1,
-        (pin_tx, pin_rx),
-        &mut afio.mapr,
-        Config::default().baudrate(115200.bps()), // baud rate defined in herkulex doc
-        clocks_serial.clone(),
-        &mut rcc.apb2,
-    );
-
-    // separate into tx and rx channels
-    let (mut tx, mut rx) = serial.split();
-
-    let mut delay = Delay::new(cp.SYST, clocks_serial);
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
 
-    let servo = Servo::new(0x00);
-    let message = servo.set_speed(512, Rotation::Clockwise);
+    // Now we need a delay object. The delay is of course depending on the clock
+    // frequency of the microcontroller, so we need to fix the frequency
+    // first. The system frequency is set via the FLASH_ACR register, so we
+    // need to get a handle to the FLASH peripheral first:
+    let mut flash = dp.FLASH.constrain();
+    // Now we can set the controllers frequency to 8 MHz:
+    let clocks = rcc.cfgr.sysclk(8.mhz()).freeze(&mut flash.acr);
+    // The `clocks` handle ensures that the clocks are now configured and gives
+    // the `Delay::new` function access to the configured frequency. With
+    // this information it can later calculate how many cycles it has to
+    // wait. The function also consumes the System Timer peripheral, so that no
+    // other function can access it. Otherwise the timer could be reset during a
+    // delay.
+    let mut delay = Delay::new(cp.SYST, clocks);
 
+    // Now, enjoy the lightshow!
     loop {
+        led.set_high().ok();
+        delay.delay_ms(1_00_u16);
         led.set_low().ok();
-        // block!(tx.write(b'R')).ok();
-        for b in &message{
-            block!(tx.write(*b)).ok();
-        }
-        // let _r = block!(rx.read()).unwrap();
-        // delay.delay_ms(1_00_u16);
-        // hprintln!("{:?}", message).unwrap();
+        delay.delay_ms(1_00_u16);
     }
 }
