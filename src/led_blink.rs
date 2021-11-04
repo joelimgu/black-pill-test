@@ -4,6 +4,7 @@
 #![no_std]
 #![no_main]
 
+
 use async_cortex_m::task;
 use cortex_m_rt::entry; // The runtime
 use embedded_hal::digital::v2::OutputPin; // the `set_high/low`function
@@ -26,6 +27,8 @@ fn main() -> ! {
     // GPIO pins on the STM32F1 must be driven by the APB2 peripheral clock.
     // This must be enabled first. The HAL provides some abstractions for
     // us: First get a handle to the RCC peripheral:
+    // rcc <=> reset and clock control
+    //
     let mut rcc: Rcc = dp.RCC.constrain();
     // Now we have access to the RCC's registers. The GPIOC can be enabled in
     // RCC_APB2ENR (Prog. Ref. Manual 8.3.7), therefore we must pass this
@@ -54,8 +57,8 @@ fn main() -> ! {
     // Now, enjoy the lightshow!
     loop {
         led.set_high().ok();
-        delay.delay_ms(1_00_u16);
+        delay.delay_ms(1_000_u16);
         led.set_low().ok();
-        delay.delay_ms(1_00_u16);
+        delay.delay_ms(1_000_u16);
     }
 }

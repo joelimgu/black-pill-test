@@ -4,6 +4,8 @@
 #![no_std]
 #![no_main]
 
+mod modules;
+
 use cortex_m_rt::entry; // The runtime
 use embedded_hal::digital::v2::OutputPin; // the `set_high/low`function
 use stm32f1xx_hal::{delay::Delay, pac, prelude::*}; // STM32F1 specific functions
@@ -11,14 +13,15 @@ use stm32f1xx_hal::{delay::Delay, pac, prelude::*}; // STM32F1 specific function
 use panic_halt;
 use stm32f1xx_hal::rcc::Rcc;
 use stm32f1xx_hal::pac::Peripherals;
-use stm32f1xx_hal::serial::{Config, Serial}; // When a panic occurs, stop the microcontroller
+use stm32f1xx_hal::serial::{Config, Serial, Tx}; // When a panic occurs, stop the microcontroller
 
 use nb::block;
 use cortex_m_semihosting::hprintln;
 
 extern crate drs_0x01;
-use drs_0x01::{Servo, Rotation};
-use drs_0x01::builder::HerkulexMessage;
+use drs_0x01::{Servo, Rotation, JogMode, JogColor};
+use drs_0x01::builder::{HerkulexMessage, MessageBuilder};
+use drs_0x01::reader::ACKReader;
 
 // This marks the entrypoint of our application. The cortex_m_rt creates some
 // startup code before this, but we don't need to worry about this
@@ -50,13 +53,9 @@ fn main() -> ! {
     // let sys_clock = rcc.cfgr.sysclk(8.mhz()).freeze(&mut flash.acr);
     let clocks_serial = rcc.cfgr.freeze(&mut flash.acr);
 
-
-
     // USART1 on Pins A9 and A10
     let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
     let pin_rx = gpioa.pa10;
-
-
 
     let serial = Serial::usart1(
         dp.USART1,
@@ -73,15 +72,8 @@ fn main() -> ! {
     let mut delay = Delay::new(cp.SYST, clocks_serial);
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
 
-    let servo = Servo::new(0xFE);
-    let message = servo.set_speed(512, Rotation::Clockwise);
-    // let reboot_msg: [u8; 7] = [0xFF,0xFF,0x07,0xFE,0x09,0xF0,0x0E];
-    //
-    // let clear_error_msg = [0xFF,0xFF,0x0B,0xFE,0x03,0xC4,0x3A,0x30,0x02,0x00,0x00];
-    //
-    // let ACK_msg = [0xFF,0xFF,0x0A,0xFE,0x03,0xC4,0x3A,0x30,0x02,0x00,0x00,0xC2,0x3C,0x34,0x01,0x01];
-    //
-    // let torque_on_msg = [0xFF,0xFF,0x0A,0xFE,0x03,0xA4,0x5A,0x30,0x02,0x00,0x00,0xC2,0x3C,0x34,0x01,0x60];
+    let servo = Servo::new(0x01);
+    // let message = servo.set_speed(512, Rotation::Clockwise);
 
     let reboot_msg: HerkulexMessage = servo.reboot();
 
@@ -109,9 +101,10 @@ fn main() -> ! {
     }
     delay.delay_ms(10_u16);
 
-
+    let message = MessageBuilder::new().id(0x01).s_jog(60, JogMode::Continuous{speed: 512, rotation: Rotation::CounterClockwise }, JogColor::Green, 0x01 ).build();
+    let message2 = MessageBuilder::new_with_id(35).stat().build();
     loop {
-
+        // let a: Tx<stm32f1xx_hal::pac::USART1> = tx;
         // block!(tx.write(b'R')).ok();
         for b in &message{
             block!(tx.write(*b)).ok();
@@ -119,5 +112,19 @@ fn main() -> ! {
         // let _r = block!(rx.read()).unwrap();
         delay.delay_ms(1_00_u16);
         // hprintln!("{:?}", message).unwrap();
+        let mut reader = ACKReader::new();
+        for b in &message2 {
+            block!(tx.write(*b)).ok();
+        }
+        let received_message = [0u8];
+        reader.parse(&received_message);
+        match reader.pop_ack_packet() {
+            Some(pk) => {
+                hprintln!("{:?}",pk);
+            },
+            _ => {
+                hprintln!("pass");
+            }
+        }
     }
 }
