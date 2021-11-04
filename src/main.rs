@@ -19,14 +19,16 @@ use nb::block;
 use cortex_m_semihosting::hprintln;
 
 extern crate drs_0x01;
-use drs_0x01::{Servo, Rotation, JogMode, JogColor};
+use drs_0x01::{Servo, Rotation, JogMode, JogColor, WritableEEPAddr};
 use drs_0x01::builder::{HerkulexMessage, MessageBuilder};
 use drs_0x01::reader::ACKReader;
+use stm32f1xx_hal::pac::ethernet_mac::macvlantr::VLANTC_W;
 
 // This marks the entrypoint of our application. The cortex_m_rt creates some
 // startup code before this, but we don't need to worry about this
 #[entry]
 fn main() -> ! {
+
     // Get handles to the hardware objects. These functions can only be called
     // once, so that the borrowchecker can ensure you don't reconfigure
     // something by accident.
@@ -72,7 +74,7 @@ fn main() -> ! {
     let mut delay = Delay::new(cp.SYST, clocks_serial);
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
 
-    let servo = Servo::new(0x01);
+    let servo = Servo::new(0xFE);
     // let message = servo.set_speed(512, Rotation::Clockwise);
 
     let reboot_msg: HerkulexMessage = servo.reboot();
@@ -101,7 +103,9 @@ fn main() -> ! {
     }
     delay.delay_ms(10_u16);
 
-    let message = MessageBuilder::new().id(0x01).s_jog(60, JogMode::Continuous{speed: 512, rotation: Rotation::CounterClockwise }, JogColor::Green, 0x01 ).build();
+    // let message = MessageBuilder::new().id(0x00).s_jog(60, JogMode::Continuous{speed: 512, rotation: Rotation::CounterClockwise }, JogColor::Green, 0x01 ).build();
+    let message = MessageBuilder::new_with_id(0xFE).write_eep(WritableEEPAddr::ID(0x05)).build();
+
     let message2 = MessageBuilder::new_with_id(35).stat().build();
     loop {
         // let a: Tx<stm32f1xx_hal::pac::USART1> = tx;

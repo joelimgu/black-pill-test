@@ -12,7 +12,7 @@ struct BlackPill {
 
 impl BlackPill {
 
-    /// aaa
+    ///
     pub fn new() -> BlackPill {
         // Get handles to the hardware objects. These functions can only be called
         // once, so that the borrowchecker can ensure you don't reconfigure
@@ -40,15 +40,41 @@ impl BlackPill {
             flash,
             clocks
         }
-
-
-
-        // BlackPill {
-        //     peripherals: perif,
-        //     // clocks
-        // }
     }
     fn set_pin_mode(){
 
     }
 }
+
+/*
+
+    enum Pin {}
+    struct Channel {
+        pin: Pin,
+        mode: Mode
+    }
+    let card = BlackPill::new();
+    card.set_pin_mode(pin,mode) -> Channel;
+    card.start_serial_comunication(pin1: Pin, pin2: Pin) -> ((Tx,Rx), (Channel1, Channel2));
+    let ((rx, tx), _) = card.start_serial_comunication(pin1: Pin, pin2: Pin);
+    card.set_pwm(pin: Pin, freq: u8 (hz), ratio: u8 (%)) -> Channel;
+
+
+    enum Input {
+        Analog,
+        Floating_Input,
+        Input_pull_up,
+        Input_pull_down,
+    }
+
+    enum Output {
+        Output_push_pull,
+        Alternate_output_drain,
+        Alternate_output_open_drain,
+    }
+
+    enum Modes {
+        Input(Inputs),
+        Output(Output)
+    }
+ */
