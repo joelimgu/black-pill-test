@@ -13,7 +13,7 @@ use stm32f1xx_hal::{delay::Delay, pac, prelude::*}; // STM32F1 specific function
 use panic_halt;
 use stm32f1xx_hal::rcc::Rcc;
 use stm32f1xx_hal::pac::Peripherals;
-use stm32f1xx_hal::serial::{Config, Serial, Tx}; // When a panic occurs, stop the microcontroller
+use stm32f1xx_hal::serial::{Config, Serial, Tx};
 
 use nb::block;
 use cortex_m_semihosting::hprintln;
@@ -86,12 +86,12 @@ fn main() -> ! {
     led.set_low().ok();
     delay.delay_ms(1_00_u16);
     for b in &reboot_msg {
-        block!(tx.write(*b));
+        block!(tx.write(*b)).ok();
     }
     delay.delay_ms(5_00_u16);
     delay.delay_ms(1_00_u16);
     for b in &clear_error_msg {
-        block!(tx.write(*b));
+        block!(tx.write(*b)).ok();
     }
     // delay.delay_ms(10_u16);
     // for b in &ACK_msg {
@@ -99,7 +99,7 @@ fn main() -> ! {
     // }
     delay.delay_ms(10_u16);
     for b in &torque_on_msg {
-        block!(tx.write(*b));
+        block!(tx.write(*b)).ok();
     }
     delay.delay_ms(10_u16);
 
@@ -124,10 +124,10 @@ fn main() -> ! {
         reader.parse(&received_message);
         match reader.pop_ack_packet() {
             Some(pk) => {
-                hprintln!("{:?}",pk);
+                hprintln!("{:?}",pk).ok();
             },
             _ => {
-                hprintln!("pass");
+                hprintln!("pass").ok();
             }
         }
     }

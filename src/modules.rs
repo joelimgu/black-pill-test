@@ -1,3 +1,3 @@
 
-pub mod blackPill;
-pub mod Herkulex;
+pub mod black_pill;
+pub mod herkulex;
