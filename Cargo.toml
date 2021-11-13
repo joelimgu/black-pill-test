@@ -1,6 +1,6 @@
 [package]
-authors = ["Joelimgu <joelimgu@gmail.com>"]
-edition = "2018"
+authors = ["Joel Imbergamo Guasch <joelimgu@gmail.com>"]
+edition = "2021"
 readme = "README.md"
 name = "black-pill-test"
 version = "0.1.0"
@@ -17,8 +17,12 @@ panic-halt = "^0.2.0"    # Panic handler
 nb = "0.1"
 drs-0x01 = "0.3.0"
 
+[dependencies.replace_with]
+version = "0.1.7"
+default-features = false
+features = ["panic_abort"]
+
 [dependencies.stm32f1xx-hal]
-# Bluepill contains a 64kB flash variant which is called "medium density"
 features = ["stm32f103", "rt", "medium"]
 version = "^0.6.1"
 

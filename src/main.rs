@@ -28,7 +28,7 @@ use stm32f1xx_hal::pac::ethernet_mac::macvlantr::VLANTC_W;
 // startup code before this, but we don't need to worry about this
 #[entry]
 fn main() -> ! {
-
+    /*
     // Get handles to the hardware objects. These functions can only be called
     // once, so that the borrowchecker can ensure you don't reconfigure
     // something by accident.
@@ -69,7 +69,7 @@ fn main() -> ! {
     );
 
     // separate into tx and rx channels
-    let (mut tx, mut rx) = serial.split();
+    let (mut tx,  _rx) = serial.split();
 
     let mut delay = Delay::new(cp.SYST, clocks_serial);
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
@@ -130,5 +130,12 @@ fn main() -> ! {
                 hprintln!("pass").ok();
             }
         }
+    }
+
+     */
+    cortex_m_semihosting::hprintln!("starting...").ok();
+    modules::black_pill::func();
+    loop {
+
     }
 }

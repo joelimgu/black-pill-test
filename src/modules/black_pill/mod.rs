@@ -1,78 +1,51 @@
-use stm32f1xx_hal::delay::Delay;
-use stm32f1xx_hal::flash::{FlashExt, Parts};
-use stm32f1xx_hal::gpio::gpioc::PC13;
-use stm32f1xx_hal::gpio;
-use stm32f1xx_hal::gpio::{Floating, GpioExt};
-use stm32f1xx_hal::pac::{self, Peripherals};
-use stm32f1xx_hal::pwm::Channel::C1;
-use stm32f1xx_hal::rcc::{Clocks, Rcc, RccExt};
-use stm32f1xx_hal::time::U32Ext;
-use crate::modules::black_pill::channel_definitions::C13;
+use cortex_m_semihosting::hprintln;
+use embedded_hal::{
+    digital::v2::OutputPin,
+    prelude::_embedded_hal_blocking_delay_DelayMs
+};
+use stm32f1xx_hal::{
+    delay::Delay,
+    flash::{FlashExt, Parts},
+    gpio::{
+        self,
+        {Floating, GpioExt},
+        gpioc::PC13
+    },
+    pac::{self, Peripherals},
+    rcc::{Clocks, Rcc, RccExt},
+    time::U32Ext
+};
 
-
-use crate::modules::black_pill::pin_config::{Input, Mode, Output, Pin};
-
+use crate::modules::black_pill::{
+    channel_definitions::C13,
+    pin_config::{Input, Mode, Output, Pin},
+};
+use replace_with;
+use stm32f1xx_hal::gpio::gpioc::CRH;
+use channels::Channel;
+use GPIOs::Gpios;
 
 mod pin_config;
 mod channel_definitions;
+mod GPIOs;
+mod channels;
 
-/*
-Un channel es un pin con traits
-los traits se deberian implementar de manera dinamica en en momento de creacion de objeto
-nononon simplemente hacher cheks antes de usar el channel usando los modos
-Una macro para hacer match del eunm y llamar a la funcion con los argumentos genericos correctos.
- */
-// struct Channel<T> {
-//     pin: Pin,
-//     mode: Mode,
-//     channel: T
-// }
-
-trait Read {
-    fn read(&self) -> u32;
-}
-
-fn func() {
+pub fn func() -> ! {
     let mut card = BlackPill::new();
     card.set_pin_mode(Pin::C13, Mode::Output(Output::Output_push_pull));
-    // let a = card;
+    loop {
+        card.gpio.C13.set_high();
+        card.delay.delay_ms(1000_u16);
+        card.gpio.C13.set_low();
+        card.delay.delay_ms(1000_u16);
+    }
 }
 
-struct Channels {
-    // gpioa: stm32f1xx_hal::gpio::gpioa::Parts,
-    // gpiob: stm32f1xx_hal::gpio::gpiob::Parts,
-    // gpioc: stm32f1xx_hal::gpio::gpioc::Parts,
-    C13: Channel
-}
 
 struct BlackPill {
-    gpio: Channels,
+    gpio: Gpios,
     delay: Delay,
     crhc: stm32f1xx_hal::gpio::gpioc::CRH,
-}
-
-
-// PC13<stm32f1xx_hal::gpio::Output<PushPull>>
-
-
-enum Channel {
-    C13(channel_definitions::C13::Mode),
-    None
-}
-
-impl Channel {
-    fn into_analog(self, crh: &mut stm32f1xx_hal::gpio::gpioc::CRH) -> Self {
-        match self {
-            Channel::C13(mode) => {
-                if let C13::Mode::Input(input) = mode {
-                    if let C13::Input::Analog(p) = input {
-                        Channel::C13(C13::Mode::Input(C13::Input::Analog(p.into_analog(crh))))
-                    } else { Channel::None }
-                } else { Channel::None }
-            }
-            Channel::None => { Channel::None }
-        }
-    }
 }
 
 impl BlackPill {
@@ -80,7 +53,6 @@ impl BlackPill {
     ///
     pub fn new() -> BlackPill {
         // Get handles to the hardware objects. These functions can only be called once
-
         let peripherals: Peripherals = pac::Peripherals::take().unwrap();
         let cp = cortex_m::Peripherals::take().unwrap();
 
@@ -89,131 +61,133 @@ impl BlackPill {
         // rcc <=> reset and clock control
         let mut rcc: Rcc = peripherals.RCC.constrain();
 
-
         // Now we need a delay object. The delay is of course depending on the clock
         // frequency of the microcontroller, so we need to fix the frequency
         // first. The system frequency is set via the FLASH_ACR register, so we
         // need to get a handle to the FLASH peripheral first:
         let mut flash = peripherals.FLASH.constrain();
+
         // Now we can set the controllers frequency to 8 MHz:
         let clocks = rcc.cfgr.sysclk(8.mhz()).freeze(&mut flash.acr);
         let delay = Delay::new(cp.SYST, clocks);
         let mut gpioc = peripherals.GPIOC.split(&mut rcc.apb2);
-        // let b: CRH = gpioc.crh
+
         BlackPill {
-            gpio: Channels {
-                // gpioa: peripherals.GPIOA.split(&mut rcc.apb2),
-                // gpiob: peripherals.GPIOB.split(&mut rcc.apb2),
-                // gpioc: peripherals.GPIOC.split(&mut rcc.apb2),
+            gpio: Gpios {
+                // C13: Channel::C13(C13::Mode::Input(C13::Input::Analog(gpioc.pc13.into_analog(&mut gpioc.crh)))),
+                // B9: Channel::B9(C13::Mode::Input(C13::Input::Analog(gpioc.pc13.into_analog(&mut gpioc.crh)))),
+                // B8: Channel,
+                // B7: Channel,
+                // B6: Channel,
+                // B5: Channel,
+                // B4: Channel,
+                // B3: Channel,
+                // A15: Channel,
+                // A12: Channel,
+                // A11: Channel,
+                // A10: Channel,
+                // A9: Channel,
+                // A8: Channel,
+                // B15: Channel,
+                // B14: Channel,
+                // B13: Channel,
+                // B12: Channel,
                 C13: Channel::C13(C13::Mode::Input(C13::Input::Analog(gpioc.pc13.into_analog(&mut gpioc.crh)))),
+                // C14: Channel,
+                // C15: Channel,
+                // A0: Channel,
+                // A1: Channel,
+                // A2: Channel,
+                // A3: Channel,
+                // A4: Channel,
+                // A5: Channel,
+                // A6: Channel,
+                // A7: Channel,
+                // B0: Channel,
+                // B1: Channel,
+                // B10: Channel,
+                // B11: Channel,
+                // RESET: Channel,
             },
             delay,
             crhc: gpioc.crh,
         }
 
     }
-    //
-    // fn init_serial_communication(a: C14<Input<PushPull>> | C15<Input<PusPull>>) {
-    //
-    // }
+    // todo fn init_serial_communication(a: C14<Input<PushPull>> | C15<Input<PusPull>>) { }
 
-    // it shouldn't consume self here...
-    fn set_pin_mode<'a>(mut self, pin: pin_config::Pin, mode: pin_config::Mode) -> BlackPill {
-        match pin {
-            Pin::C13 => {
+
+    fn set_pin_mode(&mut self, pin: pin_config::Pin, mode: pin_config::Mode) {
+        /// Defines a macro to create the necessary code to configure each pin
+        /// It just matches the mode for each port and it configures it accordingly
+        /// We need to implement the macro inside the method so that it recognises the self keyword,
+        /// see the following StackOverflow issue for more info:
+        /// https://stackoverflow.com/questions/44120455/how-to-call-methods-on-self-in-macros
+        macro_rules! gpio_config {
+            ( $pin: ident) => {
                 match mode {
                     Mode::Input(input) => {
                         match input {
-                            pin_config::Input::Analog => {
-                                // we need unsafe bc stm32_hal doesn't implement a into_analog
-                                // method using a mutable reference which is what is needed here
-                                // we are achieving the same result with this unsafe code
-                                // let a = self.gpio.C13;
+                            /*
+                                we need unsafe bc stm32_hal doesn't implement a into_analog
+                                method using a mutable reference which is what is needed here
+                                we are achieving the same result with this unsafe code
+                                we are using a crate to help with that
+                             */
+                            pin_config::Input::Analog =>  unsafe {
+                                let gpio = &mut self.gpio.C13;
+                                let crh: &mut CRH = &mut self.crhc;
+                                replace_with::replace_with_or_abort_unchecked(
+                                    gpio,
+                                    |val| val.into_analog(crh)
+                                );
+                            },
 
-                                self.gpio.C13 = self.gpio.C13.into_analog(&mut self.crhc);
-                                self
-                                // &mut self.gpio.C13
+                            Input::Floating_Input =>  unsafe {
+                                let gpio = &mut self.gpio.C13;
+                                let crh: &mut CRH = &mut self.crhc;
+                                replace_with::replace_with_or_abort_unchecked(
+                                    gpio,
+                                    |val| val.into_floating_input(crh)
+                                );
                             }
-                            _ => { self }
+                            Input::Input_pull_up => {
+                                todo!();
+                            }
+                            Input::Input_pull_down => {
+                                todo!();
+                            }
                         }
                     }
-                    Mode::Output(_) => { self }
+                    Mode::Output(output) => {
+                        hprintln!("matched output");
+                        match output {
+                            Output::Output_push_pull => unsafe {
+                                let gpio = &mut self.gpio.C13;
+                                let crh = &mut self.crhc;
+                                replace_with::replace_with_or_abort_unchecked(
+                                    gpio,
+                                    |val| val.into_Output_push_pull(crh)
+                                );
+                            },
+                            Output::Alternate_output_drain => {
+                                todo!();
+                            }
+                            Output::Alternate_output_open_drain => {
+                                todo!();
+                            }
+                        }
+                    }
                 }
-            }
+            };
+        }
+        match pin {
+            Pin::C13 => gpio_config!(C13),
         }
     }
 
-
-    // fn set_pin_mode(&mut self, pin: Pin, mode: Mode) -> Option<Channel> {
-    //     // match mode {
-    //     //     Mode::Input(input) => None,
-    //     //     Mode::Output(_) => {}
-    //     // }
-    //     match pin {
-    //         Pin::C13 => {
-    //             match mode {
-    //                 Mode::Input(input) => {
-    //                     None
-    //                     // match input {
-    //                     //     Input::Analog => {}
-    //                     //     Input::Floating_Input => {}
-    //                     //     Input::Input_pull_up => {}
-    //                     //     Input::Input_pull_down => {}
-    //                     // }
-    //                 }
-    //                 Mode::Output(output) => {
-    //                     match output {
-    //                         Output::Output_push_pull => { /* PC13<Output<PushPull>> */
-    //                             // Channel::<PC13<stm32f1xx_hal::gpio::Output<PushPull>>>::C13(gpioc.pc13.into_push_pull_output(&mut gpioc.crh))
-    //                             Some(Channel::C13(Mode3::Output(gpioc.pc13.into_push_pull_output(&mut gpioc.crh))))
-    //                         }
-    //                         Output::Alternate_output_drain => {None}
-    //                         Output::Alternate_output_open_drain => {None}
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-
     #[allow(dead_code)]
-    fn delay(&self, t: u32) {
-
+    fn delay(&mut self, t: u16) {
+        self.delay.delay_ms(t);
     }
 }
-
-/*
-
-    enum Pin {}
-    struct Channel {
-        pin: Pin,
-        mode: Mode
-    }
-    let card = BlackPill::new();
-    let led = card.set_pin_mode(pin,mode) -> Channel;
-    led.set_high();
-    card.set_pin_state(C13, HIGH);
-    card.start_serial_comunication(pin1: Pin, pin2: Pin) -> ((Tx,Rx), (Channel1, Channel2));
-    let ((rx, tx), _) = card.start_serial_comunication(pin1: Pin, pin2: Pin);
-    card.set_pwm(pin: Pin, freq: u8 (hz), ratio: u8 (%)) -> Channel;
-
-
-    enum Input {
-        Analog,
-        Floating_Input,
-        Input_pull_up,
-        Input_pull_down,
-    }
-
-    enum Output {
-        Output_push_pull,
-        Alternate_output_drain,
-        Alternate_output_open_drain,
-    }
-
-    enum Modes {
-        Input(Inputs),
-        Output(Output)
-    }
- */
