@@ -1,4 +1,7 @@
 
+/// Enums for configuration purposes only
+/// the types defined here are used to define an objective in the set_pin_mode_method
+
 pub enum Pin {
     C13
 }

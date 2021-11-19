@@ -2,9 +2,9 @@
 
 // creates the method definition for the Channel enum for a pin ( see example of expansion below )
 #[macro_export]
-macro_rules! into_Output_push_pull {
+macro_rules! into_output_push_pull {
     ( $pin: ident, $gpio_group: ident ) => {
-        pub fn into_Output_push_pull(self, crh: &mut stm32f1xx_hal::gpio::$gpio_group::CRH) -> Self {
+        pub fn into_output_push_pull(self, crh: &mut stm32f1xx_hal::gpio::$gpio_group::CRH) -> Self {
             match self {
                 Channel::$pin(mode) => {
                     match mode {

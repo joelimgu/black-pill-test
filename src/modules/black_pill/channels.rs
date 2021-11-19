@@ -23,7 +23,7 @@ use crate::modules::black_pill::{
 };
 use crate::{
     into_analog,
-    into_Output_push_pull,
+    into_output_push_pull,
     set_high,
     set_low,
     into_floating_input,
@@ -40,13 +40,15 @@ pub enum Channel {
 impl Channel {
 
     into_analog!(C13, gpioc);
-
     into_floating_input!(C13, gpioc);
+    // todo pull_up_input
+    // todo Input_pull_down // pas dans hal?!
 
-    into_Output_push_pull!(C13, gpioc);
+    into_output_push_pull!(C13, gpioc);
+    // todo Alternate_output_drain  // pas dans hal?!
+    // todo Alternate_output_open_drain
 
     set_high!(C13, gpic);
-
     set_low!(C13, gpioc);
 
     // todo is_high() -> bool
