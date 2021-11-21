@@ -12,11 +12,11 @@ mod card_struct;
 
 pub fn func() -> ! {
     let mut card = BlackPill::new();
-    card.set_pin_mode(Pin::C13, Mode::Output(Output::Output_push_pull));
+    card.set_pin_mode(Pin::c13, Mode::Output(Output::output_push_pull));
     loop {
         card.gpio.C13.set_high();
         card.delay.delay_ms(1000_u16);
         card.gpio.C13.set_low();
-        card.delay.delay_ms(1000_u16);
+        card.delay.delay_ms(1000_u16); // todo remove delay.delay
     }
 }

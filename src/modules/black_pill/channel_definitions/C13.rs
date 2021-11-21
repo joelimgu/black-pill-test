@@ -6,7 +6,6 @@ pub enum Input {
     Analog(PC13<Analog>),
     Floating_Input(PC13<gpio::Input<Floating>>),
     Input_pull_up(PC13<gpio::Input<PullUp>>),
-    Input_pull_down(PC13<gpio::Input<PullDown>>),
 }
 
 impl Debug for Input {
@@ -22,15 +21,14 @@ impl Debug for Input {
 
 pub enum Output {
     Output_push_pull(PC13<gpio::Output<PushPull>>),
-    Alternate_output_drain(PC13<gpio::Output<OpenDrain>>),
-    Alternate_output_open_drain(PC13<gpio::Output<OpenDrain>>),
+    open_drain(PC13<gpio::Output<OpenDrain>>),
 }
 
 impl Debug for Output {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             Output::Output_push_pull(_) => f.write_str("Output_push_pull"),
-            Output::Alternate_output_drain(_) => f.write_str("Alternate_output_drain"),
+            Output::open_drain(_) => f.write_str("Alternate_output_drain"),
             Output::Alternate_output_open_drain(_) => {
                 f.write_str("Alternate_output_open_drain")
             }

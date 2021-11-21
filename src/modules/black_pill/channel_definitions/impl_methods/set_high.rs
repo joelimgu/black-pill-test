@@ -12,10 +12,7 @@ macro_rules! set_high {
                                 $pin::Output::Output_push_pull(p) => {
                                     p.set_high().ok();
                                 }
-                                $pin::Output::Alternate_output_drain(p) => {
-                                    p.set_high().ok();
-                                }
-                                $pin::Output::Alternate_output_open_drain(p) => {
+                                $pin::Output::open_drain(p) => {
                                     p.set_high().ok();
                                 }
                             }

@@ -134,8 +134,5 @@ fn main() -> ! {
 
      */
     cortex_m_semihosting::hprintln!("starting...").ok();
-    modules::black_pill::func();
-    loop {
-
-    }
+    modules::black_pill::func()
 }

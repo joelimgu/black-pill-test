@@ -5,7 +5,6 @@ use crate::modules::black_pill::pin_config;
 use cortex_m_semihosting::hprintln;
 use embedded_hal::{
     digital::v2::OutputPin,
-    prelude::_embedded_hal_blocking_delay_DelayMs
 };
 use stm32f1xx_hal::{
     delay::Delay,
@@ -138,18 +137,20 @@ impl BlackPill {
                                     |val| val.into_floating_input(crh)
                                 );
                             }
-                            Input::Input_pull_up => {
-                                todo!();
-                            }
-                            Input::Input_pull_down => {
-                                todo!();
+                            Input::Input_pull_up => unsafe {
+                                let gpio = &mut self.gpio.C13;
+                                let crh: &mut CRH = &mut self.crhc;
+                                replace_with::replace_with_or_abort_unchecked(
+                                    gpio,
+                                    |val| val.into_pull_up_input(crh)
+                                );
                             }
                         }
                     }
                     Mode::Output(output) => {
-                        hprintln!("matched output");
+                        hprintln!("matched output").ok();
                         match output {
-                            Output::Output_push_pull => unsafe {
+                            Output::output_push_pull => unsafe {
                                 let gpio = &mut self.gpio.C13;
                                 let crh = &mut self.crhc;
                                 replace_with::replace_with_or_abort_unchecked(
@@ -157,12 +158,14 @@ impl BlackPill {
                                     |val| val.into_output_push_pull(crh)
                                 );
                             },
-                            Output::Alternate_output_drain => {
-                                todo!();
-                            }
-                            Output::Alternate_output_open_drain => {
-                                todo!();
-                            }
+                            Output::open_drain => unsafe {
+                                let gpio = &mut self.gpio.C13;
+                                let crh = &mut self.crhc;
+                                replace_with::replace_with_or_abort_unchecked(
+                                    gpio,
+                                    |val| val.into_open_drain_output(crh)
+                                );
+                            },
                         }
                     }
                 }
@@ -171,8 +174,8 @@ impl BlackPill {
 
 
         match pin {
-            Pin::C13 => gpio_config!(C13),
-        }
+            Pin::c13 => gpio_config!(C13),
+        };
     }
 
     #[allow(dead_code)]

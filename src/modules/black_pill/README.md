@@ -19,8 +19,10 @@ panic if we try to use it in another mode before configuring it.
 
 We also have the mode enum and the pin enum, those are only used for configuration 
 purposes, only to pass the information for in which mode we want to configure
-a channel. 
+a channel.
 
-    
+# IMPORTANT
+We didn't thing about remap in this crate! It is supposed to be simple and check for the basic uses at compile time not more!
+
 
 

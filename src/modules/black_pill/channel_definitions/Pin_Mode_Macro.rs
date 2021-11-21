@@ -4,7 +4,7 @@
 #[macro_export]
 macro_rules! GPIO_Module {
     ( $pin: ident, $gpio_group: ident ) => {
-        use core::fmt::{Debug, Formatter, Write};
+        use core::fmt::{Debug, Formatter};
         use stm32f1xx_hal::gpio::{
             self, Analog, Floating, $gpio_group::$pin, OpenDrain, PullDown, PullUp, PushPull
         };
@@ -14,7 +14,6 @@ macro_rules! GPIO_Module {
             Analog($pin<Analog>),
             Floating_Input($pin<gpio::Input<Floating>>),
             Input_pull_up($pin<gpio::Input<PullUp>>),
-            Input_pull_down($pin<gpio::Input<PullDown>>),
         }
 
         // So that we can hprint the value of the enum for debugging
@@ -24,7 +23,6 @@ macro_rules! GPIO_Module {
                     Input::Analog(_) => f.write_str("Analog"),
                     Input::Floating_Input(_) => f.write_str("Floating_Input"),
                     Input::Input_pull_up(_) => f.write_str("Input_pull_up"),
-                    Input::Input_pull_down(_) => f.write_str("Input_pull_down")
                 }
             }
         }
@@ -33,8 +31,7 @@ macro_rules! GPIO_Module {
         /// type associated to it
         pub enum Output {
             Output_push_pull($pin<gpio::Output<PushPull>>),
-            Alternate_output_drain($pin<gpio::Output<OpenDrain>>),
-            Alternate_output_open_drain($pin<gpio::Output<OpenDrain>>),
+            open_drain($pin<gpio::Output<OpenDrain>>)
         }
 
         // So that we can hprint the value of the enum for debugging
@@ -42,10 +39,7 @@ macro_rules! GPIO_Module {
             fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
                 match self {
                     Output::Output_push_pull(_) => f.write_str("Output_push_pull"),
-                    Output::Alternate_output_drain(_) => f.write_str("Alternate_output_drain"),
-                    Output::Alternate_output_open_drain(_) => {
-                        f.write_str("Alternate_output_open_drain")
-                    }
+                    Output::open_drain(_) => f.write_str("open_drain"),
                 }
             }
         }

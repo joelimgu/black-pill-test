@@ -19,9 +19,6 @@ macro_rules! into_floating_input {
                                 $pin::Input::Input_pull_up(p) => {
                                     Channel::$pin($pin::Mode::Input($pin::Input::Floating_Input(p.into_floating_input(crh))))
                                 }
-                                $pin::Input::Input_pull_down(p) => {
-                                    Channel::$pin($pin::Mode::Input($pin::Input::Floating_Input(p.into_floating_input(crh))))
-                                }
                             }
                         }
                         $pin::Mode::Output(output) => {
@@ -29,11 +26,7 @@ macro_rules! into_floating_input {
                                 $pin::Output::Output_push_pull(p) => {
                                     Channel::$pin($pin::Mode::Input($pin::Input::Floating_Input(p.into_floating_input(crh))))
                                 }
-
-                                $pin::Output::Alternate_output_drain(p) => {
-                                    Channel::$pin($pin::Mode::Input($pin::Input::Floating_Input(p.into_floating_input(crh))))
-                                }
-                                $pin::Output::Alternate_output_open_drain(p) => {
+                                $pin::Output::open_drain(p) => {
                                     Channel::$pin($pin::Mode::Input($pin::Input::Floating_Input(p.into_floating_input(crh))))
                                 }
                             }
