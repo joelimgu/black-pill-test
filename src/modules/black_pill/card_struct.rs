@@ -175,6 +175,7 @@ impl BlackPill {
 
         match pin {
             Pin::c13 => gpio_config!(C13),
+            Pin::c14 => {gpio_config!(C14)}
         };
     }
 

@@ -27,6 +27,7 @@ use crate::{into_analog, into_output_push_pull, set_high, set_low, into_floating
 #[derive(Debug)]
 pub enum Channel {
     C13(channel_definitions::C13::Mode),
+    C14(channel_definitions::C14::Mode),
     None
 }
 

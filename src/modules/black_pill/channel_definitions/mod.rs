@@ -7,3 +7,8 @@ pub mod C13 {
     use crate::GPIO_Module;
     GPIO_Module!(PC13, gpioc);
 }
+
+pub mod C14 {
+    use crate::GPIO_Module;
+    GPIO_Module!(PC13, gpioc);
+}

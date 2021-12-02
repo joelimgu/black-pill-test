@@ -19,7 +19,8 @@ macro_rules! set_low {
                         }
                         $pin::Mode::Input(_) => {}
                     }
-                }
+                },
+                Channel::C14 => {}
                 Channel::None => {}
             }
         }

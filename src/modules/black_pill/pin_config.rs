@@ -3,7 +3,8 @@
 /// the types defined here are used to define an objective in the set_pin_mode_method
 
 pub enum Pin {
-    c13
+    c13,
+    c14,
 }
 
 pub enum Input {

@@ -28,7 +28,7 @@ use stm32f1xx_hal::pac::ethernet_mac::macvlantr::VLANTC_W;
 // startup code before this, but we don't need to worry about this
 #[entry]
 fn main() -> ! {
-    /*
+
     // Get handles to the hardware objects. These functions can only be called
     // once, so that the borrowchecker can ensure you don't reconfigure
     // something by accident.
@@ -74,8 +74,8 @@ fn main() -> ! {
     let mut delay = Delay::new(cp.SYST, clocks_serial);
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
 
-    let servo = Servo::new(0xFE);
-    // let message = servo.set_speed(512, Rotation::Clockwise);
+    let servo = Servo::new(0x01);
+    let message = servo.set_speed(512, Rotation::Clockwise);
 
     let reboot_msg: HerkulexMessage = servo.reboot();
 
@@ -104,16 +104,28 @@ fn main() -> ! {
     delay.delay_ms(10_u16);
 
     // let message = MessageBuilder::new().id(0x00).s_jog(60, JogMode::Continuous{speed: 512, rotation: Rotation::CounterClockwise }, JogColor::Green, 0x01 ).build();
-    let message = MessageBuilder::new_with_id(0xFE).write_eep(WritableEEPAddr::ID(0x05)).build();
+    // let message = MessageBuilder::new_with_id(0xFE).write_eep(WritableEEPAddr::ID(0x05)).build();
 
     let message2 = MessageBuilder::new_with_id(35).stat().build();
     loop {
         // let a: Tx<stm32f1xx_hal::pac::USART1> = tx;
         // block!(tx.write(b'R')).ok();
-        for b in &message{
-            block!(tx.write(*b)).ok();
+        for i in 0..0xFE{
+            hprintln!("Trying servo with id: {}", i);
+            let servo = Servo::new(i);
+            let mut message = servo.set_speed(512, Rotation::Clockwise);
+            for b in &message {
+                block!(tx.write(*b)).ok();
+            }
+            delay.delay_ms(1_000_u16);
+            message = servo.set_speed(0, Rotation::Clockwise);
+            for b in &message {
+                block!(tx.write(*b)).ok();
+            }
+            delay.delay_ms(1_000_u16);
         }
-        // let _r = block!(rx.read()).unwrap();
+
+            // let _r = block!(rx.read()).unwrap();
         delay.delay_ms(1_00_u16);
         // hprintln!("{:?}", message).unwrap();
         let mut reader = ACKReader::new();
@@ -132,7 +144,7 @@ fn main() -> ! {
         }
     }
 
-     */
-    cortex_m_semihosting::hprintln!("starting...").ok();
-    modules::black_pill::func()
+
+    // cortex_m_semihosting::hprintln!("starting...").ok();
+    // modules::black_pill::func()
 }
