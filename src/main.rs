@@ -1,130 +1,108 @@
-// src/main.rs
+//! Simple CAN example.
+//! Requires a transceiver connected to PA11, PA12 (CAN1) or PB5 PB6 (CAN2).
+// Code pour juste envoyer
 
-// std and main are not available for bare metal software
-#![no_std]
 #![no_main]
+#![no_std]
 
-mod modules;
-
-use cortex_m_rt::entry; // The runtime
-use embedded_hal::digital::v2::OutputPin; // the `set_high/low`function
-use stm32f1xx_hal::{delay::Delay, pac, prelude::*}; // STM32F1 specific functions
-#[allow(unused_imports)]
-use panic_halt;
-use stm32f1xx_hal::rcc::Rcc;
-use stm32f1xx_hal::pac::Peripherals;
-use stm32f1xx_hal::serial::{Config, Serial, Tx}; // When a panic occurs, stop the microcontroller
-
+use panic_halt as _;
+use bxcan::filter::Mask32;
+use bxcan::{Frame, StandardId};
+use cortex_m::interrupt::free;
+use cortex_m::iprintln;
+use cortex_m_rt::entry;
 use nb::block;
+use stm32f1xx_hal::{can::Can, pac, prelude::*};
 use cortex_m_semihosting::hprintln;
 
-extern crate drs_0x01;
-use drs_0x01::{Servo, Rotation, JogMode, JogColor};
-use drs_0x01::builder::{HerkulexMessage, MessageBuilder};
-use drs_0x01::reader::ACKReader;
-
-// This marks the entrypoint of our application. The cortex_m_rt creates some
-// startup code before this, but we don't need to worry about this
 #[entry]
 fn main() -> ! {
-    // Get handles to the hardware objects. These functions can only be called
-    // once, so that the borrowchecker can ensure you don't reconfigure
-    // something by accident.
-    let dp: Peripherals = pac::Peripherals::take().unwrap();
-    let cp = cortex_m::Peripherals::take().unwrap();
-
-    // GPIO pins on the STM32F1 must be driven by the APB2 peripheral clock.
-    // This must be enabled first. The HAL provides some abstractions for
-
-    // us: First get a handle to the RCC peripheral:
-    let mut rcc: Rcc = dp.RCC.constrain();
-    // Now we have access to the RCC's registers. The GPIOC can be enabled in
-    // RCC_APB2ENR (Prog. Ref. Manual 8.3.7), therefore we must pass this
-    // register to the `split` function.
-    let mut gpioc = dp.GPIOC.split(&mut rcc.apb2);
-    // This gives us an exclusive handle to the GPIOC peripheral. To get the
-    // handle to a single pin, we need to configure the pin first. Pin C13
-    // is usually connected to the Bluepills onboard LED.
+    let dp = pac::Peripherals::take().unwrap();
 
     let mut flash = dp.FLASH.constrain();
-    let mut gpioa = dp.GPIOA.split(&mut rcc.apb2);
-    let mut afio = dp.AFIO.constrain(&mut rcc.apb2);
+    let rcc = dp.RCC.constrain();
 
-    // let sys_clock = rcc.cfgr.sysclk(8.mhz()).freeze(&mut flash.acr);
-    let clocks_serial = rcc.cfgr.freeze(&mut flash.acr);
+    // To meet CAN clock accuracy requirements an external crystal or ceramic
+    // resonator must be used. The blue pill has a 8MHz external crystal.
+    // Other boards might have a crystal with another frequency or none at all.
+    rcc.cfgr.use_hse(8.mhz()).freeze(&mut flash.acr);
 
-    // USART1 on Pins A9 and A10
-    let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
-    let pin_rx = gpioa.pa10;
+    let mut afio = dp.AFIO.constrain();
 
-    let serial = Serial::usart1(
-        dp.USART1,
-        (pin_tx, pin_rx),
-        &mut afio.mapr,
-        Config::default().baudrate(115200.bps()), // baud rate defined in herkulex doc
-        clocks_serial.clone(),
-        &mut rcc.apb2,
-    );
+    let mut can1 = {
+        #[cfg(not(feature = "connectivity"))]
+            let can = Can::new(dp.CAN1, dp.USB);
+        #[cfg(feature = "connectivity")]
+            let can = Can::new(dp.CAN1);
 
-    // separate into tx and rx channels
-    let (mut tx, mut rx) = serial.split();
+        let mut gpioa = dp.GPIOA.split();
+        let rx = gpioa.pa11.into_floating_input(&mut gpioa.crh);
+        let tx = gpioa.pa12.into_alternate_push_pull(&mut gpioa.crh);
+        can.assign_pins((tx, rx), &mut afio.mapr);
 
-    let mut delay = Delay::new(cp.SYST, clocks_serial);
-    let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
+        bxcan::Can::new(can)
+    };
 
-    let servo = Servo::new(0x01);
-    // let message = servo.set_speed(512, Rotation::Clockwise);
+    // APB1 (PCLK1): 8MHz, Bit rate: 125kBit/s, Sample Point 87.5%
+    // Value was calculated with http://www.bittiming.can-wiki.info/
+    can1.modify_config().set_bit_timing(0x001c_0003);
 
-    let reboot_msg: HerkulexMessage = servo.reboot();
+    // Configure filters so that can frames can be received.
+    let mut filters = can1.modify_filters();
+    filters.enable_bank(0, Mask32::accept_all());
 
-    let clear_error_msg= servo.clear_errors();
+    #[cfg(feature = "connectivity")]
+        let _can2 = {
+        let can = Can::new(dp.CAN2);
 
-    let torque_on_msg = servo.enable_torque();
+        let mut gpiob = dp.GPIOB.split();
+        let rx = gpiob.pb5.into_floating_input(&mut gpiob.crl);
+        let tx = gpiob.pb6.into_alternate_push_pull(&mut gpiob.crl);
+        can.assign_pins((tx, rx), &mut afio.mapr);
 
-    led.set_low().ok();
-    delay.delay_ms(1_00_u16);
-    for b in &reboot_msg {
-        block!(tx.write(*b));
-    }
-    delay.delay_ms(5_00_u16);
-    delay.delay_ms(1_00_u16);
-    for b in &clear_error_msg {
-        block!(tx.write(*b));
-    }
-    // delay.delay_ms(10_u16);
-    // for b in &ACK_msg {
-    //     block!(tx.write(*b));
-    // }
-    delay.delay_ms(10_u16);
-    for b in &torque_on_msg {
-        block!(tx.write(*b));
-    }
-    delay.delay_ms(10_u16);
+        let mut can2 = bxcan::Can::new(can);
 
-    let message = MessageBuilder::new().id(0x01).s_jog(60, JogMode::Continuous{speed: 512, rotation: Rotation::CounterClockwise }, JogColor::Green, 0x01 ).build();
-    let message2 = MessageBuilder::new_with_id(35).stat().build();
+        // APB1 (PCLK1): 8MHz, Bit rate: 125kBit/s, Sample Point 87.5%
+        // Value was calculated with http://www.bittiming.can-wiki.info/
+        can2.modify_config().set_bit_timing(0x001c_0003);
+
+        // A total of 28 filters are shared between the two CAN instances.
+        // Split them equally between CAN1 and CAN2.
+        let mut slave_filters = filters.set_split(14).slave_filters();
+        slave_filters.enable_bank(14, Mask32::accept_all());
+        can2
+    };
+
+    // Drop filters to leave filter configuraiton mode.
+    drop(filters);
+
+    // Select the interface.
+    let mut can = can1;
+    //let mut can = _can2;
+
+    // Split the peripheral into transmitter and receiver parts.
+    block!(can.enable()).unwrap();
+
+    // Echo back received packages in sequence.
+    // See the `can-rtfm` example for an echo implementation that adheres to
+    // correct frame ordering based on the transfer id.
+
+    /* Code to send a fram continously
+    let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8,1_u8]);
     loop {
-        // let a: Tx<stm32f1xx_hal::pac::USART1> = tx;
-        // block!(tx.write(b'R')).ok();
-        for b in &message{
-            block!(tx.write(*b)).ok();
-        }
-        // let _r = block!(rx.read()).unwrap();
-        delay.delay_ms(1_00_u16);
-        // hprintln!("{:?}", message).unwrap();
-        let mut reader = ACKReader::new();
-        for b in &message2 {
-            block!(tx.write(*b)).ok();
-        }
-        let received_message = [0u8];
-        reader.parse(&received_message);
-        match reader.pop_ack_packet() {
-            Some(pk) => {
-                hprintln!("{:?}",pk);
-            },
-            _ => {
-                hprintln!("pass");
+        block!(can.transmit(&data)).unwrap();
+    }*/
+
+    // Code to receive and print result continously
+    //let mut frame: Option<Frame> = None;
+    hprintln!("starting...");
+    loop {
+        match block!(can.receive()) {
+            Ok(v) => {hprintln!("{:?}", v.data().unwrap());}
+            Err(e) => {
+                hprintln!("err",);
             }
-        }
+        };
+        hprintln!("loop");
     }
 }
