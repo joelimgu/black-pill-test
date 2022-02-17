@@ -1,23 +1,23 @@
 //! Simple CAN example.
 //! Requires a transceiver connected to PA11, PA12 (CAN1) or PB5 PB6 (CAN2).
-// Code pour juste envoyer
 
 #![no_main]
 #![no_std]
 
 use panic_halt as _;
+
 use bxcan::filter::Mask32;
 use bxcan::{Frame, StandardId};
-use cortex_m::interrupt::free;
-use cortex_m::iprintln;
 use cortex_m_rt::entry;
+use cortex_m_semihosting::hprintln;
 use nb::block;
 use stm32f1xx_hal::{can::Can, pac, prelude::*};
-use cortex_m_semihosting::hprintln;
+use stm32f1xx_hal::delay::Delay;
 
 #[entry]
 fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
+    let cp = cortex_m::Peripherals::take().unwrap();
 
     let mut flash = dp.FLASH.constrain();
     let rcc = dp.RCC.constrain();
@@ -25,7 +25,7 @@ fn main() -> ! {
     // To meet CAN clock accuracy requirements an external crystal or ceramic
     // resonator must be used. The blue pill has a 8MHz external crystal.
     // Other boards might have a crystal with another frequency or none at all.
-    rcc.cfgr.use_hse(8.mhz()).freeze(&mut flash.acr);
+    let clocks = rcc.cfgr.use_hse(8.mhz()).freeze(&mut flash.acr);
 
     let mut afio = dp.AFIO.constrain();
 
@@ -80,6 +80,9 @@ fn main() -> ! {
     let mut can = can1;
     //let mut can = _can2;
 
+    let mut gpioc = dp.GPIOC.split();
+    let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
+
     // Split the peripheral into transmitter and receiver parts.
     block!(can.enable()).unwrap();
 
@@ -87,22 +90,30 @@ fn main() -> ! {
     // See the `can-rtfm` example for an echo implementation that adheres to
     // correct frame ordering based on the transfer id.
 
-    /* Code to send a fram continously
-    let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8,1_u8]);
-    loop {
-        block!(can.transmit(&data)).unwrap();
-    }*/
+    let mut delay = Delay::new(cp.SYST, clocks);
 
-    // Code to receive and print result continously
-    //let mut frame: Option<Frame> = None;
+    //Send data
+    let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 2_u8 ,3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8]);
+    hprintln!("starting...");
+
+    loop {
+        //led.set_high();
+        block!(can.transmit(&data)).unwrap();
+        //led.set_low();
+
+    }
+
+    //Receive Data and print
+/*
     hprintln!("starting...");
     loop {
         match block!(can.receive()) {
-            Ok(v) => {hprintln!("{:?}", v.data().unwrap());}
+            Ok(v) => { hprintln!("{:?}", v.data().unwrap()); }
             Err(e) => {
                 hprintln!("err",);
             }
         };
         hprintln!("loop");
     }
+    */
 }
