@@ -7,13 +7,13 @@
 mod modules;
 
 use cortex_m_rt::entry; // The runtime
-use embedded_hal::digital::v2::OutputPin; // the `set_high/low`function
+//use embedded_hal::digital::v2::OutputPin; // the `set_high/low`function
 use stm32f1xx_hal::{delay::Delay, pac, prelude::*}; // STM32F1 specific functions
 #[allow(unused_imports)]
 use panic_halt;
 use stm32f1xx_hal::rcc::Rcc;
 use stm32f1xx_hal::pac::Peripherals;
-use stm32f1xx_hal::serial::{Config, Serial, Tx};
+use stm32f1xx_hal::serial::{Config, Serial};
 
 use nb::block;
 use cortex_m_semihosting::hprintln;
@@ -21,17 +21,16 @@ extern crate drs_0x01;
 use drs_0x01::{Servo, Rotation, JogMode, JogColor, WritableEEPAddr, ReadableEEPAddr, WritableRamAddr, ReadableRamAddr};
 use drs_0x01::builder::{HerkulexMessage, MessageBuilder};
 use drs_0x01::reader::ACKReader;
-use stm32f1xx_hal::pac::ethernet_mac::macvlantr::VLANTC_W;
+//use stm32f1xx_hal::pac::ethernet_mac::macvlantr::VLANTC_W;
 
 // This marks the entrypoint of our application. The cortex_m_rt creates some
 // startup code before this, but we don't need to worry about this
 #[entry]
 fn main() -> ! {
 
-
-    ///
-    /// CONFIGURATION STM32
-    ///
+    //
+    // CONFIGURATION STM32
+    //
 
     // Get handles to the hardware objects. These functions can only be called
     // once, so that the borrowchecker can ensure you don't reconfigure
@@ -77,47 +76,91 @@ fn main() -> ! {
 
     let mut delay = Delay::new(cp.SYST, clocks_serial);
 
+    //
+    // END OF CONFIGURATION
+    //
+
+
+    //
+    // TO DO LIST
+    // X Set ID RAM
+    // X Set ID EEPROM
+    // @TODO Set ID EEPROM with Paul Library
+    // @TODO Get ID RAM
+    // @TODO Get ID EEPROM
+    // X Make functions
+    // @TODO Generalize set/get for other properties
+    // @TODO Test this module
+    // @TODO Make documentation
+    // @TODO Make it modular to use any TX/RX
+    //
+
+
+    //
+    // TESTS
+    //
+
+    // Check https://ferrous-systems.com/blog/defmt-test-hal/ to test
+
+
+    //
+    // END OF TESTS
+    //
+
+
+
+    //
+    // FUNCTIONS
+    //
+
     ///
-    /// END OF CONFIGURATION
+    /// This function is here to try and test random things
+    /// @TODO Remove this function when it became useless
     ///
+    fn test_function(tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
+        // Test if the function sendMessage correctly works
+        // If it works then @TODO Update all other functions to use sendMessage function
 
 
+        // Make all servos turn for 10 seconds and then stop
+        let id = 0xFE; // Broadcast
+        let servo = Servo::new(id);
+        let msg = servo.set_speed(512, Rotation::Clockwise); // Half speed clockwise
+        send_message(msg, tx);
 
+        delay.delay_ms(10_000_u16); // Wait 10 sec
 
+        let msg = servo.set_speed(0, Rotation::Clockwise); // No speed clockwise
+        send_message(msg, tx);
 
-
-
+    }
 
     ///
-    /// FUNCTIONS
+    /// Send message in through tx
+    /// @param msg   : Herkulex message which is an array containing the bytes to send
+    /// @param tx    : Tx protocol
+    /// @TODO Check if it works
     ///
-
-
-    /**
-     * Send message in through tx
-     * @param msg   : Herkulex message which is an array containing the bytes to send
-     * @param tx    : Tx protocol
-     * @TODO Check if it works
-     */
-    fn sendMessage(msg : HerkulexMessage, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
+    fn send_message(msg : HerkulexMessage, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
         for b in &msg {
             block!(tx.write(*b)).ok();
         }
     }
 
-    /**
-     * Read message through rx
-     * ONLY Display info
-     * @TODO Return the result
-     * @TODO Check if it works
-     */
-    fn readMessage(tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1>) {
+    ///
+    /// Read message through rx
+    /// ONLY Display info
+    /// @returns ??
+    /// @TODO Return the result
+    /// @TODO Check if it works
+    ///
+    fn read_message(rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) -> u8 {
         let mut reader = ACKReader::new();
-        /*
+
         let res = block!(rx.read()).unwrap();
         delay.delay_ms(1_00_u16);
-        hprintln!("ID: {:?}", res).unwrap();
-        */
+        hprintln!("id: {:?}", res).unwrap();
+
 
         let received_message = [0u8];
         reader.parse(&received_message);
@@ -128,18 +171,22 @@ fn main() -> ! {
             _ => {
                 hprintln!("pass").ok();
             }
-        }
+        };
+
+        let msg : u8 = 42;
+        msg
+
     }
 
 
-    /**
-     * Init a servo by cleaning errors and setting torque on
-     * @param ID    : the ID of the targeted servo
-     * @TODO  Check if it works
-     * @TODO Check if we need to reboot the servo
-     */
-    fn init(ID : u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
-        let servo = Servo::new(ID);
+    ///
+    /// Init a servo by cleaning errors and setting torque on
+    /// @param id    : the id of the targeted servo
+    /// @TODO  Check if it works
+    /// @TODO Check if we need to reboot the servo
+    ///
+    fn init(id : u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
+        let servo = Servo::new(id);
         let msg_clear_error = servo.clear_errors();
         let msg_torque_on = servo.enable_torque();
 
@@ -159,26 +206,26 @@ fn main() -> ! {
         delay.delay_ms(1_00_u16);
     }
 
-    /**
-     * Change the ID of servo in the memory
-     * @TODO : Check if it works
-    **/
-    fn changeID(currentID: u8, newID: u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
-        let servoTest = Servo::new(currentID);
-        let writeID1 = servoTest.ram_write(WritableRamAddr::ID(newID));
-        for b in &writeID1 {
+    ///
+    /// Change the id of servo in the memory
+    /// @TODO : Check if it works
+    ///
+    fn change_id(currentid: u8, newid: u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
+        let servo = Servo::new(currentid);
+        let writeid1 = servo.ram_write(WritableRamAddr::ID(newid));
+        for b in &writeid1 {
             block!(tx.write(*b)).ok();
         }
         delay.delay_ms(10_00_u16);
 
-        let clear_errors = servoTest.clear_errors();
+        let clear_errors = servo.clear_errors();
         for b in &clear_errors {
             block!(tx.write(*b)).ok();
         }
 
         delay.delay_ms(100_00_u16);
 
-        let enable_torque = servoTest.enable_torque();
+        let enable_torque = servo.enable_torque();
         for b in &enable_torque {
             block!(tx.write(*b)).ok();
         }
@@ -186,45 +233,45 @@ fn main() -> ! {
     }
 
 
-    /**
-     * Change the ID of servo in the EEPROM
-     * @param currentID : the ID of the servo you want to change
-     * @param newID     : the ID you want to set to the servo
-     * TODO : Check if it works
-     */
-    fn changeIDEEPROM(currentID: u8, newID: u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
-        let pSize = 0x0A;
-        let mut pID = currentID;
+    ///
+    /// Change the id of servo in the EEPROM
+    /// @param currentid : the id of the servo you want to change
+    /// @param newid     : the id you want to set to the servo
+    /// TODO : Check if it works
+    ///
+    fn change_id_eeprom(current_id: u8, new_id: u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
+        let packet_size = 0x0A;
+        let packet_id = current_id;
         let cmd = 0x01;
         let addr = 0x06;
         let length = 0x01;
-        let mut sNew = newID;
+        let packet_new_id = new_id;
 
         // Checksum1
         let mut ck1 = 0;
         ck1 ^= 0x0A;
-        ck1 ^= currentID;
+        ck1 ^= current_id;
         ck1 ^= 0x01;
         ck1 ^= addr;
         ck1 ^= length;
-        ck1 ^= sNew;
+        ck1 ^= packet_new_id;
         ck1 ^= 0xFE;
 
         // Checksum2
-        let mut ck2 = (!ck1) & 0xFE;
+        let ck2 = (!ck1) & 0xFE;
 
-        // Packet Header, Packet Header, Packet Size, Servo ID, Command, Chksum1, chksum2, Address, Length, Value
-        let mut changeID_msg: [u8; 10] = [0xFF, 0xFF, pSize, pID, cmd, ck1, ck2, addr, length, newID];
+        // Packet Header, Packet Header, Packet Size, Servo id, Command, Chksum1, chksum2, Address, Length, Value
+        let changeid_msg: [u8; 10] = [0xFF, 0xFF, packet_size, packet_id, cmd, ck1, ck2, addr, length, packet_new_id];
 
-        hprintln!("Change ID from {:?} to {:?}", currentID, newID);
+        hprintln!("Change id from {:?} to {:?}", current_id, new_id).ok();
 
 
-        for b in &changeID_msg {
+        for b in &changeid_msg {
             block!(tx.write(*b)).ok();
         }
         delay.delay_ms(10_00_u16);
 
-        let servo = Servo::new(newID);
+        let servo = Servo::new(new_id);
 
         // Restart the motor
         let reboot_msg = servo.reboot();
@@ -248,14 +295,14 @@ fn main() -> ! {
         delay.delay_ms(100_u16);
     }
 
-    /**
-     * Set the speed of a servo
-     * @param ID        : the ID of the servo you want to set the speed to
-     * @param speed     : the speed from 0 to 1000
-     * @param rotation  : the rotation Clockwise or counterclockwise
-     */
-    fn setSpeed(ID : u8, speed : u16, rotation : Rotation, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay ) {
-        let servo = Servo::new(ID);
+    ///
+    /// Set the speed of a servo
+    /// @param id        : the id of the servo you want to set the speed to
+    /// @param speed     : the speed from 0 to 1000
+    /// @param rotation  : the rotation Clockwise or counterclockwise
+    ///
+    fn set_speed(id : u8, speed : u16, rotation : Rotation, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
+        let servo = Servo::new(id);
         let msg = servo.set_speed(speed, rotation);
         for b in &msg {
             block!(tx.write(*b)).ok();
@@ -263,70 +310,71 @@ fn main() -> ! {
     }
 
 
-    /**
-     * Get ID of the servo in RAM
-     * @TODO Get the message to return it
-     * @TODO Check if it works
-     */
-    fn getIDRAM(tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1> ,delay: &mut stm32f1xx_hal::delay::Delay) -> u8 {
-        let answer : u8 = 31;
+    ///
+    /// Get id of the servo in RAM
+    /// @TODO Get the message to return it
+    /// @TODO Check if it works
+    ///
+    fn get_id_ram(tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1> ,delay: &mut stm32f1xx_hal::delay::Delay) -> u8 {
         let broadcast = 0xFE;
         let servo = Servo::new(broadcast);
         let msg = servo.eep_request(ReadableEEPAddr::ID);
-        sendMessage(msg, tx);
+        send_message(msg, tx);
 
-        answer
+        delay.delay_ms(10_u16);
+
+        read_message(rx, delay) // Returns 42 for now @TODO Check the result here
     }
 
-    /**
-     * Set ACK Policy of the servo in RAM
-     * @param ID        (u8)    - id of the servo
-     * @param policy    (u8)    - AckPolicy (0,1,2)
-     * @TODO Check if it works
-     */
-    fn setAckPolicyRam(ID : u8, policy : u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
-        let servo = Servo::new(ID);
+    ///
+    /// Set ACK Policy of the servo in RAM
+    /// @param id        (u8)    - id of the servo
+    /// @param policy    (u8)    - AckPolicy (0,1,2)
+    /// @TODO Check if it works
+    ///
+    fn set_ack_policy_ram(id : u8, policy : u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
+        let servo = Servo::new(id);
         let msg = servo.ram_write(WritableRamAddr::AckPolicy(policy));
         for b in &msg {
             block!(tx.write(*b)).ok();
         }
     }
 
-    ///
-    /// END OF FUNCTIONS
-    ///
+    //
+    // END OF FUNCTIONS
+    //
 
 
 
 
 
 
+    //
+    // INIT SERVOS
+    //
 
-    ///
-    /// INIT SERVOS
-    ///
+    // Servo with Broadcast id
+    let servo_broadcast = Servo::new(0xFE);
+    init(servo_broadcast.id(), &mut tx, &mut delay);
 
-    // Servo with Broadcast ID
-    let mut servo = Servo::new(0xFE);
-    init(servo.id(), &mut tx, &mut delay);
+    //
+    // END OF INIT SERVOS
+    //
 
-    ///
-    /// END OF INIT SERVOS
-    ///
 
 
 
 
 
     loop {
-        // Try all IDs from 0 to 10
-        // Make the motor with the corresponding ID turn for 500ms and then stop
+        // Try all ids from 0 to 10
+        // Make the motor with the corresponding id turn for 500ms and then stop for 200ms
         for i in 0x00..0x0B{
-            hprintln!("Trying servo with id: {}", i);
-            setSpeed(i, 512, Rotation::Clockwise,  &mut tx, &mut delay);
+            hprintln!("Trying servo with id: {}", i).ok();
+            set_speed(i, 512, Rotation::Clockwise,  &mut tx);
             delay.delay_ms(500_u16);
 
-            setSpeed(i, 0, Rotation::Clockwise,  &mut tx, &mut delay);
+            set_speed(i, 0  , Rotation::Clockwise,  &mut tx);
             delay.delay_ms(200_u16);
         }
     }
