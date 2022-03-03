@@ -93,12 +93,27 @@ fn main() -> ! {
     let mut delay = Delay::new(cp.SYST, clocks);
 
     //Send data
-    let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 2_u8 ,3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8]);
+    let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
     hprintln!("starting...");
 
+    block!(can.transmit(&data)).unwrap();
+
+    let action : u64 = 0;
+    // attend acquittement
     loop {
+        match block!(can.receive()) {
+            Ok(v) => {
+                if v.data().unwrap().eq(data.data().unwrap()) {
+                    led.set_high();
+                }
+            }
+            Err(e) => {
+                hprintln!("err",);
+            }
+        }
+
         //led.set_high();
-        block!(can.transmit(&data)).unwrap();
+
         //led.set_low();
 
     }
@@ -114,6 +129,6 @@ fn main() -> ! {
             }
         };
         hprintln!("loop");
-    }
-    */
+    }*/
+
 }
