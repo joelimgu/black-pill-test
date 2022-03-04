@@ -12,7 +12,7 @@ use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use nb::block;
 use stm32f1xx_hal::{can::Can, pac, prelude::*};
-use stm32f1xx_hal::delay::Delay;
+use stm32f1xx_hal::timer::Timer;
 
 #[entry]
 fn main() -> ! {
@@ -25,7 +25,7 @@ fn main() -> ! {
     // To meet CAN clock accuracy requirements an external crystal or ceramic
     // resonator must be used. The blue pill has a 8MHz external crystal.
     // Other boards might have a crystal with another frequency or none at all.
-    let clocks = rcc.cfgr.use_hse(8.mhz()).freeze(&mut flash.acr);
+    let clocks = rcc.cfgr.use_hse(8.MHz()).freeze(&mut flash.acr);
 
     let mut afio = dp.AFIO.constrain();
 
@@ -40,7 +40,9 @@ fn main() -> ! {
         let tx = gpioa.pa12.into_alternate_push_pull(&mut gpioa.crh);
         can.assign_pins((tx, rx), &mut afio.mapr);
 
-        bxcan::Can::new(can)
+        bxcan::Can::builder(can)
+            .set_bit_timing(0x001c_0003)
+            .leave_disabled()
     };
 
     // APB1 (PCLK1): 8MHz, Bit rate: 125kBit/s, Sample Point 87.5%
@@ -84,13 +86,15 @@ fn main() -> ! {
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
 
     // Split the peripheral into transmitter and receiver parts.
-    block!(can.enable()).unwrap();
+    block!(can.enable_non_blocking()).unwrap();
 
     // Echo back received packages in sequence.
     // See the `can-rtfm` example for an echo implementation that adheres to
     // correct frame ordering based on the transfer id.
 
-    let mut delay = Delay::new(cp.SYST, clocks);
+    //New Delay with timer
+    let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
+    timer.start(0.05.Hz()).unwrap();
 
     //Send data
     let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
@@ -98,20 +102,27 @@ fn main() -> ! {
     hprintln!("starting...");
 
     block!(can.transmit(&data)).unwrap();
-    led.set_low();
+
 
     // attend acquittement
 
     loop {
-        /*match block!(can.receive()) {
+        led.set_low();
+
+        block!(timer.wait()).unwrap();
+
+
+        match block!(can.receive()) {
             Ok(v) => {
                 if v.data().unwrap().as_ref() == (data.data().unwrap().as_ref()) {
                     led.set_high();
                     block!(can.transmit(&data_off)).unwrap();
+                    hprintln!("{:?}", v.data().unwrap());
                 }
                 else if v.data().unwrap().as_ref() == [0,0,0,0,0,0,0,0] {
                     led.set_low();
                     block!(can.transmit(&data)).unwrap();
+                    hprintln!("{:?}", v.data().unwrap());
                 } else {
                     hprintln!("Unknown Command");
                 }
@@ -119,7 +130,7 @@ fn main() -> ! {
             Err(e) => {
                 hprintln!("err",);
             }
-        }*/
+        }
     }
 
 
