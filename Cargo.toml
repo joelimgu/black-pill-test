@@ -21,10 +21,6 @@ version = "0.9"
 features = ["stm32f103", "rt", "medium", "has-can"]
 
 
-#[dependencies.stm32f1xx-hal]
-#features = ["stm32f103", "rt", "medium"] #por que no deja has-can cuando esta en las features de .toml
-#version = "0.6.1"
-
 
 # Uncomment for the panic example.
 # panic-itm = "0.4.1"

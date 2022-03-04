@@ -99,58 +99,41 @@ fn main() -> ! {
     //Send data
     let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
     let data_off = Frame::new_data(StandardId::new(1_16).unwrap(), [0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
-    hprintln!("starting...");
 
 
+        loop{
 
+            //Send CODE
+            /*
+            block!(can.transmit(&data)).unwrap();
+            //Wait 1 second
+            block!(timer.wait()).unwrap();
+            block!(can.transmit(&data_off)).unwrap();
+            //Wait 1 second
+            block!(timer.wait()).unwrap();
+            */
 
-    // attend acquittement
+            //Receive CODE
 
-    loop {
-/*
-        block!(can.transmit(&data)).unwrap();
-
-        //Wait 1 second
-        block!(timer.wait()).unwrap();
-
-        block!(can.transmit(&data_off)).unwrap();
-
-        //Wait 1 second
-        block!(timer.wait()).unwrap();
-*/
-//Not working :(
-
-        match block!(can.receive()) {
-            Ok(v) => {
-                if v.data().unwrap().as_ref() == (data.data().unwrap().as_ref()) {
-                    led.set_high();
-                    hprintln!("HIGH");
+            match block!(can.receive()) {
+                Ok(v) => {
+                    if v.data().unwrap().as_ref() == (data.data().unwrap().as_ref()) {
+                        led.set_high();
+                        //hprintln!("HIGH");
+                    }
+                    else if v.data().unwrap().as_ref() == [0,0,0,0,0,0,0,0] {
+                        led.set_low();
+                        //hprintln!("LOW");
+                    } else {
+                        //hprintln!("Unknown Command");
+                    }
                 }
-                else if v.data().unwrap().as_ref() == [0,0,0,0,0,0,0,0] {
-                    led.set_low();
-                    hprintln!("LOW");
-                } else {
-                    hprintln!("Unknown Command");
+                Err(e) => {
+                    hprintln!("err",);
                 }
             }
-            Err(e) => {
-                hprintln!("err",);
-            }
+
         }
-    }
 
-
-    //Receive Data and print
-    /*
-    hprintln!("starting...");
-    loop {
-        match block!(can.receive()) {
-            Ok(v) => { hprintln!("{:?}", v.data().unwrap()); }
-            Err(e) => {
-                hprintln!("err",);
-            }
-        };
-        hprintln!("loop");
-    }*/
 
 }
