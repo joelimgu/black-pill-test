@@ -94,32 +94,37 @@ fn main() -> ! {
 
     //Send data
     let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
+    let data_off = Frame::new_data(StandardId::new(1_16).unwrap(), [0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
     hprintln!("starting...");
 
     block!(can.transmit(&data)).unwrap();
+    led.set_low();
 
-    let action : u64 = 0;
     // attend acquittement
+
     loop {
-        match block!(can.receive()) {
+        /*match block!(can.receive()) {
             Ok(v) => {
-                if v.data().unwrap().eq(data.data().unwrap()) {
+                if v.data().unwrap().as_ref() == (data.data().unwrap().as_ref()) {
                     led.set_high();
+                    block!(can.transmit(&data_off)).unwrap();
+                }
+                else if v.data().unwrap().as_ref() == [0,0,0,0,0,0,0,0] {
+                    led.set_low();
+                    block!(can.transmit(&data)).unwrap();
+                } else {
+                    hprintln!("Unknown Command");
                 }
             }
             Err(e) => {
                 hprintln!("err",);
             }
-        }
-
-        //led.set_high();
-
-        //led.set_low();
-
+        }*/
     }
 
+
     //Receive Data and print
-/*
+    /*
     hprintln!("starting...");
     loop {
         match block!(can.receive()) {
