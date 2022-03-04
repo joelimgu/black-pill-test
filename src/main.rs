@@ -94,35 +94,41 @@ fn main() -> ! {
 
     //New Delay with timer
     let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
-    timer.start(0.05.Hz()).unwrap();
+    timer.start(1.Hz()).unwrap();
 
     //Send data
     let data = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
     let data_off = Frame::new_data(StandardId::new(1_16).unwrap(), [0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
     hprintln!("starting...");
 
-    block!(can.transmit(&data)).unwrap();
+
 
 
     // attend acquittement
 
     loop {
-        led.set_low();
+/*
+        block!(can.transmit(&data)).unwrap();
 
+        //Wait 1 second
         block!(timer.wait()).unwrap();
 
+        block!(can.transmit(&data_off)).unwrap();
+
+        //Wait 1 second
+        block!(timer.wait()).unwrap();
+*/
+//Not working :(
 
         match block!(can.receive()) {
             Ok(v) => {
                 if v.data().unwrap().as_ref() == (data.data().unwrap().as_ref()) {
                     led.set_high();
-                    block!(can.transmit(&data_off)).unwrap();
-                    hprintln!("{:?}", v.data().unwrap());
+                    hprintln!("HIGH");
                 }
                 else if v.data().unwrap().as_ref() == [0,0,0,0,0,0,0,0] {
                     led.set_low();
-                    block!(can.transmit(&data)).unwrap();
-                    hprintln!("{:?}", v.data().unwrap());
+                    hprintln!("LOW");
                 } else {
                     hprintln!("Unknown Command");
                 }
