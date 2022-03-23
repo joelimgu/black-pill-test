@@ -6,7 +6,7 @@
 
 mod modules;
 
-use core::ptr::read;
+// use core::ptr::read;
 use cortex_m_rt::entry; // The runtime
 //use embedded_hal::digital::v2::OutputPin; // the `set_high/low`function
 use stm32f1xx_hal::{delay::Delay, pac, prelude::*}; // STM32F1 specific functions
@@ -89,7 +89,7 @@ fn main() -> ! {
     // X Set ID RAM
     // X Set ID EEPROM
     // @TODO Set ID EEPROM with Paul Library
-    // @TODO Get ID RAM
+    // X Get ID RAM
     // @TODO Get ID EEPROM
     // X Make functions
     // @TODO Generalize set/get for other properties
@@ -168,7 +168,8 @@ fn main() -> ! {
         }
     }
 
-    fn tester_read(reader : &mut ACKReader ,rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1>, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
+    // @TODO Check if it works well
+    fn tester_read(rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1>, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) {
         change_id(0xFE, 0x01, tx, delay);
         let servo = Servo::new(0x01);
         set_ack_policy_ram(0x01,1, tx);
@@ -176,32 +177,46 @@ fn main() -> ! {
 
         let _message = servo.stat();
         // let _message = MessageBuilder::new_with_id(1).stat().build(); // It works
-        let getId = servo.ram_request(ReadableRamAddr::ID); // No answer yet => check ack policy
+        let getId = servo.ram_request(ReadableRamAddr::ID);
         let getTemperature = servo.ram_request(ReadableRamAddr::Temperature);
 
-        // let mut received_message:[u8; 10] = [0,0,0,0,0,0,0,0,0,0];
-
-        // hprintln!("{:?}", getId);
-
-        // send_message(getId, tx);
-        // send_message(_message, tx);
-        //
-        // // It works
-        // read_bytes(rx, &mut received_message, 0);
-        // hprintln!("{:?}", received_message);
-
-        // let _message = servo.stat();
-        // send_message(_message, tx);
-        // send_message(getId, tx);
         send_message(getTemperature, tx);
+        let answ = read_message(rx);
+
+        send_message(getId, tx);
+        let answ2 = read_message(rx);
+
+        hprintln!("{:?}", answ);
+        hprintln!("{:?}", answ2);
 
 
+        // read_message(rx, delay);
+        delay.delay_ms(10_u16);
 
-        // delay.delay_ms(1_u16); // No delay or overrun
 
+    }
 
+    ///
+    /// Send message in through tx
+    /// @param msg   : Herkulex message which is an array containing the bytes to send
+    /// @param tx    : Tx protocol
+    ///
+    fn send_message(msg : HerkulexMessage, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
+        for b in &msg {
+            block!(tx.write(*b)).ok();
+        }
+    }
 
-        let mut received_message:[u8; 15] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    ///
+    /// Read message through rx
+    /// ONLY Display info
+    /// @returns tuple of the array and the size of the packet
+    /// @TODO Check if it works
+    ///
+    fn read_message(rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1>) -> [u8;20] {
+        let mut received_message:[u8; 20] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+        /*
         for i in 0..3 {
             let res = block!(rx.read());
             match res {
@@ -232,84 +247,28 @@ fn main() -> ! {
             }
         }
 
+         */
 
-
-        // read_bytes(rx, &mut received_message, 0);
-        hprintln!("{:?}", &received_message[0..pSize]);
-
-
-        // read_message(rx, delay);
-        delay.delay_ms(10_u16);
-
-
-    }
-
-    ///
-    /// It works
-    fn read_bytes(rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1>, received_message : &mut [u8;10], i :usize) {
-        // let res = block!(rx.read());
-        match block!(rx.read()) {
+        // Remove duplicate
+        let i = 0;
+        let mut pSize = 3;
+        while i < pSize {
+            let res = block!(rx.read());
+            match res {
                 Ok(vr) => {
                     received_message[i] = vr;
-                    read_bytes(rx, received_message, i+1);
+                    if i == 2 {
+                        pSize = vr as usize;
+                    }
                 },
                 Err(e) => {
                     hprintln!("{:?}",e);
-                },
-                _ => {
-
                 }
-        }
-    }
-
-    ///
-    /// Send message in through tx
-    /// @param msg   : Herkulex message which is an array containing the bytes to send
-    /// @param tx    : Tx protocol
-    ///
-    fn send_message(msg : HerkulexMessage, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
-        for b in &msg {
-            block!(tx.write(*b)).ok();
-        }
-    }
-
-    ///
-    /// Read message through rx
-    /// ONLY Display info
-    /// @returns ??
-    /// @TODO Return the result
-    /// @TODO Check if it works
-    ///
-    fn read_message(rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1>, delay: &mut stm32f1xx_hal::delay::Delay) -> u8 {
-        let mut reader = ACKReader::new();
-
-        let res = block!(rx.read());
-        match res {
-            Ok(vr) => {
-                hprintln!("{:?}", vr);
-            },
-            Err(e) => {
-                hprintln!("{:?}",e);
             }
         }
-        // hprintln!("id: {:?}", res).unwrap();
+        hprintln!("Received packet : {:?}", &received_message[0..pSize]);
 
-        // let msg_nb = reader.available_messages();
-        // hprintln!("{:?}",msg_nb).ok();
-        //
-        // let received_message = [0u8];
-        // reader.parse(&received_message);
-        // match reader.pop_ack_packet() {
-        //     Some(pk) => {
-        //         hprintln!("{:?}",pk).ok();
-        //     },
-        //     _ => {
-        //         hprintln!("pass").ok();
-        //     }
-        // };
-
-        let msg : u8 = 42;
-        msg
+        received_message
 
     }
 
@@ -415,6 +374,39 @@ fn main() -> ! {
     }
 
     ///
+    /// Get id of the servo in RAM
+    /// @TODO Check if it works
+    ///
+    fn get_id_ram(tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1> ,delay: &mut stm32f1xx_hal::delay::Delay) -> u8 {
+        let broadcast = 0xFE;
+        let servo = Servo::new(broadcast);
+        // let msg = servo.eep_request(ReadableEEPAddr::ID);
+        let msg = servo.ram_request(ReadableRamAddr::ID);
+        send_message(msg, tx);
+
+        delay.delay_ms(10_u16);
+
+        let ans = read_message(rx); // Returns 42 for now @TODO Check the result here
+        ans[9]
+    }
+
+    ///
+    /// Get id of the servo in EEPROM
+    /// @TODO Check if it works
+    ///
+    fn get_id_eeprom(tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1> ,delay: &mut stm32f1xx_hal::delay::Delay) -> u8 {
+        let broadcast = 0xFE;
+        let servo = Servo::new(broadcast);
+        let msg = servo.eep_request(ReadableEEPAddr::ID);
+        send_message(msg, tx);
+
+        delay.delay_ms(10_u16);
+
+        let ans = read_message(rx); // Returns 42 for now @TODO Check the result here
+        ans[9]
+    }
+
+    ///
     /// Set the speed of a servo
     /// @param id        : the id of the servo you want to set the speed to
     /// @param speed     : the speed from 0 to 1000
@@ -423,40 +415,20 @@ fn main() -> ! {
     fn set_speed(id : u8, speed : u16, rotation : Rotation, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
         let servo = Servo::new(id);
         let msg = servo.set_speed(speed, rotation);
-        for b in &msg {
-            block!(tx.write(*b)).ok();
-        }
-    }
-
-
-    ///
-    /// Get id of the servo in RAM
-    /// @TODO Get the message to return it
-    /// @TODO Check if it works
-    ///
-    fn get_id_ram(tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>, rx: &mut stm32f1xx_hal::serial::Rx<stm32f1xx_hal::stm32::USART1> ,delay: &mut stm32f1xx_hal::delay::Delay) -> u8 {
-        let broadcast = 0xFE;
-        let servo = Servo::new(broadcast);
-        let msg = servo.eep_request(ReadableEEPAddr::ID);
         send_message(msg, tx);
-
-        delay.delay_ms(10_u16);
-
-        read_message(rx, delay) // Returns 42 for now @TODO Check the result here
     }
+
+
 
     ///
     /// Set ACK Policy of the servo in RAM
     /// @param id        (u8)    - id of the servo (Broadcast id does not work)
     /// @param policy    (u8)    - AckPolicy (0,1,2)
-    /// @TODO Check if it works
     ///
     fn set_ack_policy_ram(id : u8, policy : u8, tx: &mut stm32f1xx_hal::serial::Tx<stm32f1xx_hal::stm32::USART1>) {
         let servo = Servo::new(id);
         let msg = servo.ram_write(WritableRamAddr::AckPolicy(policy));
-        for b in &msg {
-            block!(tx.write(*b)).ok();
-        }
+        send_message(msg ,tx);
     }
 
     //
@@ -481,17 +453,11 @@ fn main() -> ! {
     //
 
 
-    // test_function2(&mut tx, &mut delay);
-
-
     // Servo branche, ID = 240;
 
 
     loop {
-        tester_read(&mut reader, &mut rx, &mut tx, &mut delay);
+        tester_read( &mut rx, &mut tx, &mut delay);
         delay.delay_ms(100_u16);
-        // change_id_eeprom(240, 1, &mut tx, &mut delay);
-
-        // tester_ids(&mut tx, &mut delay);
     }
 }
