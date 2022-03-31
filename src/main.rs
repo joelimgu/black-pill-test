@@ -105,9 +105,12 @@ fn main() -> ! {
     let data2 = Frame::new_data(StandardId::new(1_u16).unwrap(),[2_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
     let data_off2 = Frame::new_data(StandardId::new(1_16).unwrap(), [2_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
 
+    hprintln!("Debut");
+
         loop{
 
             //Send CODE
+/*
             block!(can.transmit(&data1)).unwrap();
 
             block!(timer.wait()).unwrap();
@@ -120,36 +123,39 @@ fn main() -> ! {
             block!(can.transmit(&data_off2)).unwrap();
             //Wait 1 second
             block!(timer.wait()).unwrap();
-
+*/
             //Receive CODE
             //ID recognition
 
 
-            /*
+
             match block!(can.receive()) {
                 Ok(v) => {
-                    hprintln!("Read");
+                    //hprintln!("Read");
                     let read = v.data().unwrap().as_ref();
                     //Check ID = 1
+                    //hprintln!("ID = {:?}", v.data().unwrap());
                     if read[0] == 2{
 
-                        if  read == [1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8] {
+                        if  read[2] == 1 {
                             led.set_high();
                             hprintln!("HIGH");
                         }
-                        else if read == [1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8] {
+                        else if read[2] == 0 {
                             led.set_low();
                             hprintln!("LOW");
                         } else {
                             hprintln!("Unknown Command");
                         }
+                    } else {
+                        hprintln!("NOT ME");
                     }
 
                 }
                 Err(e) => {
                     hprintln!("err",);
                 }
-            } */
+            }
 
         }
 
