@@ -5,16 +5,36 @@
 #![no_std]
 
 
-
 use panic_halt as _;
 
-use bxcan::filter::Mask32;
-use bxcan::{Frame, StandardId};
-use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
-use nb::block;
-use stm32f1xx_hal::{can::Can, pac, prelude::*};
-use stm32f1xx_hal::timer::Timer;
+use bxcan::filter::Mask32; //OG
+use bxcan::{Frame, StandardId}; //OG
+use cortex_m_rt::entry; //OG
+use cortex_m_semihosting::hprintln; //OG
+use nb::block; //OG
+use stm32f1xx_hal::{can::Can, pac, prelude::*}; //OG
+use stm32f1xx_hal::timer::Timer; //OG
+
+//For interrupt
+//use cortex_m::interrupt::Mutex; //for mutex
+//use cortex_m::interrupt as inter; //for interrupt::free
+//use cortex_m_rt::interrupt;
+use core::cell::RefCell;
+use bxcan::Interrupt::Fifo0MessagePending;
+use stm32f1xx_hal::pac::interrupt;
+use stm32f1::stm32f103;
+use core::borrow::Borrow;
+
+// Enable interrupt
+use stm32f1::stm32f103::{Interrupt, NVIC};
+
+//Mutex for CAN access
+//static CAN_M : Mutex<RefCell<Option<stm32f103::CAN1>>> = Mutex::new(RefCell::new(None));
+
+#[interrupt]
+fn USB_LP_CAN_RX0(){
+    hprintln!("Hola");
+}
 
 #[entry]
 //Symbol ! means the fonction returns NEVER => an infinite loop must exist
@@ -82,7 +102,7 @@ fn main() -> ! {
     drop(filters);
 
     // Select the interface.
-    let mut can = can1;
+    let mut can = &mut can1;
     //let mut can = _can2;
 
     let mut gpioc = dp.GPIOC.split();
@@ -90,35 +110,51 @@ fn main() -> ! {
 
     // Split the peripheral into transmitter and receiver parts.
     block!(can.enable_non_blocking()).unwrap();
+    //Mutex Configuration
+    // Store the CAN in the mutex, moving it.
+    inter::free(|cs| CAN_M.borrow(cs).replace(Some(dp.CAN1)));
+    // We can no longer use `can` or `can1`, and instead have to
+    // access it via the mutex.
 
-    // Echo back received packages in sequence.
-    // See the `can-rtfm` example for an echo implementation that adheres to
-    // correct frame ordering based on the transfer id.
+    //Enable interrupts for CAN RX0 (FIFO 0, see RM8001) after MUtex
+    can.enable_interrupt(Fifo0MessagePending);
+
+    //NVIC Enable
+    unsafe{NVIC::unmask(Interrupt::USB_LP_CAN_RX0);}
 
     //New Delay with timer
     let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
     timer.start(1.Hz()).unwrap();
 
     //Send data
-    let data1 = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
-    let data_off1 = Frame::new_data(StandardId::new(1_u16).unwrap(),[1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
-    let data2 = Frame::new_data(StandardId::new(1_u16).unwrap(),[2_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
-    let data_off2 = Frame::new_data(StandardId::new(1_16).unwrap(), [2_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
+    let data1 = Frame::new_data(StandardId::new(5_u16).unwrap(),[1_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
+    let data_off1 = Frame::new_data(StandardId::new(5_u16).unwrap(),[1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
+    let data2 = Frame::new_data(StandardId::new(5_u16).unwrap(),[2_u8, 1_u8 ,1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8]);
+    let data_off2 = Frame::new_data(StandardId::new(5_16).unwrap(), [2_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8]);
 
-    hprintln!("Debut");
+    //hprintln!("Debut");
 
         loop{
+
+            //LED
+
+            led.set_high();
+            block!(timer.wait()).unwrap();
+            led.set_low();
+            block!(timer.wait()).unwrap();
 
             //Send CODE
 /*
             block!(can.transmit(&data1)).unwrap();
 
             block!(timer.wait()).unwrap();
+            //hprintln!("Sent");
             block!(can.transmit(&data2)).unwrap();
             //Wait 1 second
             block!(timer.wait()).unwrap();
 
             block!(can.transmit(&data_off1)).unwrap();
+            //hprintln!("Sent2");
             block!(timer.wait()).unwrap();
             block!(can.transmit(&data_off2)).unwrap();
             //Wait 1 second
@@ -127,8 +163,8 @@ fn main() -> ! {
             //Receive CODE
             //ID recognition
 
-
-
+/*
+            //Recieve message
             match block!(can.receive()) {
                 Ok(v) => {
                     //hprintln!("Read");
@@ -138,11 +174,11 @@ fn main() -> ! {
                     if read[0] == 2{
 
                         if  read[2] == 1 {
-                            led.set_high();
+                            //led.set_high();
                             hprintln!("HIGH");
                         }
                         else if read[2] == 0 {
-                            led.set_low();
+                            //led.set_low();
                             hprintln!("LOW");
                         } else {
                             hprintln!("Unknown Command");
@@ -156,6 +192,7 @@ fn main() -> ! {
                     hprintln!("err",);
                 }
             }
+*/
 
         }
 
